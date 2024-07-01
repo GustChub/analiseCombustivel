@@ -6,17 +6,9 @@ pd.set_option('display.max_colwidth', None)
 
 fn.concatenaDados()
 
-fn.convertValorFloat()
-
-fn.convertDate()
-
-fn.limpar_dados()
-
-fn.infoDF()
+fn.tratamentoDados()
 
 fn.infoPeriodo()
-
-fn.concatenaEndereco()
 
 fn.mediaVendaMunicipiosProduto()
 
