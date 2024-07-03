@@ -1,17 +1,15 @@
-# Neste modulo são definidas as funções utilizadas do modulo main
+# Neste modulo são definidas as funções utilizadas no codigo main
 import os
 import pandas as pd
 
-# define função para tratar e acessar os dados.
-
+# define função para concatenar os dados semestrais e salvar um arquivo concatenado.
 def concatenaDados():
     
     global arquivo_saida
     global diretorio_salvar
     global df
    
-
-     # Define o caminho para a pasta onde deseja salvar o arquivo CSV
+    # Define o caminho para a pasta onde deseja salvar o arquivo CSV
     diretorio_salvar = os.path.join(os.path.dirname(__file__), 'dados', 'csv_concatenado')
     arquivo_saida = os.path.join(diretorio_salvar, 'dados_concatenados.csv')
    
@@ -19,7 +17,7 @@ def concatenaDados():
     if not os.path.exists(diretorio_salvar):
         os.makedirs(diretorio_salvar)
     
-    # Verifica se o arquivo de saída já existe
+    # Verifica se o arquivo de saída já existe, se existir lê o arquivo e  o salva na memoria como dataframe "df"
     if os.path.exists(arquivo_saida):
         print(f"O arquivo {arquivo_saida} já existe. Carregando o DataFrame a partir deste arquivo.")
         df = pd.read_csv(arquivo_saida, delimiter=',', low_memory= False)
@@ -57,7 +55,7 @@ def concatenaDados():
     print(f"DataFrame salvo como CSV em: {arquivo_saida}")
 
     return df
-
+# Define função para atualizar o banco de dados caso seja inserido algum dado semestral novo.
 def atualizaDados():
 
     # Verifica se o arquivo de saída já existe e remove o mesmo
@@ -67,16 +65,17 @@ def atualizaDados():
         # Atualiza os dados através do metodo concatenaDados
         return concatenaDados()
 
+# Define a função que retona informações sobre o dataframe "df"
 def infoDF():
 
     # Exibe informações sobre o DataFrame antes do tratamento
-    print("Informações do DataFrame antes do tratamento:")
+    print("\nInformações do DataFrame antes do tratamento:\n")
     print(df.info())
 
-def infoDFLimpo():
+def infoDFLimpo(df_limpo):
 
     # Exibe informações sobre o DataFrame antes do tratamento
-    print("Informações do DataFrame depois do tratamento:")
+    print("\nInformações do DataFrame depois do tratamento:\n")
     print(df_limpo.info())
     
 def convertValorFloat(): 
@@ -109,7 +108,7 @@ def tratamentoDados():
 
     infoDF()
     
-    print("Iniciando o tratamento dos dados")
+    print("""\nIniciando o tratamento dos dados:\n- Conversão da coluna "Valor de Venda para Float"\n- Conversão da coluna "Data da Coleta para Data"\n- Criação da coluna "Endereço"\n- Tratamento das celulas com valores nulos\n""")
 
     convertValorFloat()
 
@@ -121,22 +120,23 @@ def tratamentoDados():
     colunas_interesse = ['Produto', 'Valor de Venda','Data da Coleta']
     valores_nulos_antes = df[colunas_interesse].isnull().sum().reset_index()
     valores_nulos_antes.columns = ['Coluna', 'Valores Nulos']
-    print("Valores nulos antes da limpeza:")
+    print("Valores nulos antes da limpeza:\n")
     print(valores_nulos_antes)
 
     # Remove as linhas com valores nulos nas colunas de interesse
     df_limpo = df.dropna(subset=colunas_interesse)
 
     # Realiza o levantamento de valores nulos por coluna após a limpeza
-    valores_nulos_depois = df_limpo[colunas_interesse].isnull().sum()
-    print("Valores nulos depois da limpeza:")
+    valores_nulos_depois = df_limpo[colunas_interesse].isnull().sum().reset_index()
+    valores_nulos_depois.columns = ['Coluna', 'Valores Nulos']
+    print("\nValores nulos depois da limpeza:\n")
     print(valores_nulos_depois)
-    print('tratamento dos dados concluído')
+    print('\ntratamento dos dados concluído.\n')
 
-    infoDFLimpo()
+    infoDFLimpo(df_limpo)
     
     return df_limpo
-        
+  
     
 def infoPeriodo():
 
@@ -144,15 +144,13 @@ def infoPeriodo():
     df_sorted_data = df_limpo.sort_values(by='Data da Coleta', ascending= True)
     data_inicial = df_sorted_data.iloc[0, 11]
     data_final = df_sorted_data.iloc[-1, 11]
-
-    print(df_sorted_data.tail(20))
-
+    
     # Formatando as datas no formato (dia/mês/ano)
     data_inicial_formatada = data_inicial.strftime('%d/%m/%Y')
     data_final_formatada = data_final.strftime('%d/%m/%Y')
 
     # Infomora a data inicial e a final do dataframe
-    print(f'A série historica começa em {data_inicial_formatada} e termina em {data_final_formatada}')
+    print(f'\nA série historica começa em {data_inicial_formatada} e termina em {data_final_formatada}\n')
     return data_inicial, data_final
 
 def mediaVendaMunicipiosProduto():
