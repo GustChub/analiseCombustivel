@@ -14,13 +14,37 @@ fn.tratamentoDados()
 # Informa o periodo inicial e final da série histórica.
 fn.infoPeriodo()
 
-# Solicita a Analise de dados desjada:
-escolha = input(f"""\nEscolha a Analise de dados desejada:\n 1 - Comparação entre cidades do preço médio do combustivel para toda série histórica\n 2 - Comparação entre cidades do preço médio do combustivel para o periodo de interesse\n 3 - Endereço dos Postos com o preço médio do combustivel mais baratos para toda série histórica\n 4 - Endereço dos Postos com o preço médio do combustivel mais baratos para o perido de interesse\n""")
+while True:
 
-fn.mediaVendaMunicipiosProduto()
+    # Solicita a Analise de dados desjada:
+    escolha = input(f"""\nEscolha a Analise de dados desejada:\n 1 - Comparação entre cidades do preço médio do combustivel para toda série histórica\n 2 - Comparação entre cidades do preço médio do combustivel para o periodo de interesse\n 3 - Endereço dos Postos com o preço médio do combustivel mais baratos para toda série histórica\n 4 - Endereço dos Postos com o preço médio do combustivel mais baratos para o perido de interesse\n 5 - Sair\n""")
 
-fn.mediaVendaMunicipiosProdutoDataInteresse()
+    match escolha:
+        case "1":
+            combustivel = fn.coletar_combustivel()
+            
+            cidades = fn.coletar_cidades()
 
-fn.top5BaratosHistorico()
+            fn.mediaVendaMunicipiosProduto(cidades, combustivel)
 
-fn.top5BaratosDataInteresse()
+        case "2":
+
+            # Desempacota as variaveis que informam inicio da série histórica e final da série histórica.
+            data_inicial, data_final, data_inicial_formatada, data_final_formatada = fn.infoPeriodo()
+
+            # Desempacota as variaveis que informam inicio do periodo de interesse e final do periodo de interesse.
+            data_inicial_usuario_dt, data_final_usuario_dt = fn.coletar_periodo_usuario(data_inicial, data_final, data_inicial_formatada, data_final_formatada)
+
+            combustivel = fn.coletar_combustivel()
+            
+            cidades = fn.coletar_cidades()
+
+            fn.mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_usuario_dt, data_final_usuario_dt)
+
+        case "3":
+            fn.top5BaratosHistorico()
+
+            fn.top5BaratosDataInteresse()
+        
+        case "5":
+            break

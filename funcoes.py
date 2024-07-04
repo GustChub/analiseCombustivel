@@ -1,6 +1,8 @@
 # Neste modulo são definidas as funções utilizadas no codigo main
 import os
+import unidecode
 import pandas as pd
+from datetime import datetime
 
 # define função para concatenar os dados semestrais e salvar um arquivo concatenado.
 def concatenaDados():
@@ -151,15 +153,91 @@ def infoPeriodo():
 
     # Infomora a data inicial e a final do dataframe
     print(f'\nA série historica começa em {data_inicial_formatada} e termina em {data_final_formatada}\n')
-    return data_inicial, data_final
+    
+    return data_inicial, data_final, data_inicial_formatada, data_final_formatada
 
-def mediaVendaMunicipiosProduto():
+def coletar_periodo_usuario(data_inicial, data_final, data_inicial_formatada, data_final_formatada):
+
+    while True:
+        try:
+            # Solicita ao usuário que insira a data inicial e final no formato correto
+            data_inicial_usuario = input(f"Digite a data inicial do periodo de analise (dd/mm/yyyy) posterior a {data_inicial_formatada}: ").strip()
+            data_final_usuario = input(f"Digite a data final do periodo de analise (dd/mm/yyyy) anterior a {data_final_formatada}: ").strip()
+            
+            # Converte as datas para o formato datetime
+            data_inicial_usuario_dt = datetime.strptime(data_inicial_usuario, '%d/%m/%Y')
+            data_final_usuario_dt = datetime.strptime(data_final_usuario, '%d/%m/%Y')
+            
+            # Verifica se as datas estão dentro do período válido
+            if data_inicial_usuario_dt < data_inicial or data_final_usuario_dt > data_final:
+                raise ValueError(f"As datas devem estar entre {data_inicial.strftime('%d/%m/%Y')} e {data_final.strftime('%d/%m/%Y')}.")
+            
+            if data_inicial_usuario_dt > data_final_usuario_dt:
+                raise ValueError("A data inicial deve ser anterior ou igual à data final.")
+            
+            # Se as datas forem válidas, retorna-as
+            return data_inicial_usuario_dt, data_final_usuario_dt
+        
+        except ValueError as e:
+            # Imprime a mensagem de erro e continua o loop
+            print(f"Erro: {e}. Por favor, tente novamente.")
+
+def coletar_combustivel():
+    combustiveis_validos = df_limpo['Produto'].unique().tolist()
+    
+    while True:
+        try:
+            combustivel = input(f"Escreva um combustível desejado - {combustiveis_validos}: ").strip().upper()
+            
+            if combustivel not in combustiveis_validos:
+                raise ValueError("Combustível inválido. Por favor, insira um combustível válido.")
+            
+            return combustivel
+        
+        except ValueError as e:
+            print(e)
+
+
+def coletar_cidades():
+    # Obtém a lista de cidades possíveis a partir do DataFrame
+    cidades_possiveis = df_limpo['Municipio'].unique().tolist()
+    
+    # Lista para armazenar as cidades válidas inseridas pelo usuário
+    cidades = []
+
+    while True:
+        try:
+            # Solicita ao usuário que insira o nome de uma cidade , retira espaços da entrada e converte para maiúsculas.
+            cidade = input("\nDigite o nome da cidade (ou aperte Enter para adicionar outra, ou deixe em branco e aperte Enter para finalizar):\n ").strip().upper()
+            
+            # Normaliza a entrada do usuário: remove acentos e substitui 'Ç' por 'C'
+            cidade_normalizada = unidecode.unidecode(cidade).replace('Ç', 'C')
+            
+            # Verifica se a entrada está vazia para finalizar a coleta
+            if cidade_normalizada == "":
+                break
+            
+            # Verifica se a cidade inserida está na lista de cidades possíveis
+            cidades_possiveis_normalizadas = [unidecode.unidecode(c).replace('ç', 'c').upper() for c in cidades_possiveis]
+            if cidade_normalizada not in cidades_possiveis_normalizadas:
+                raise ValueError(f"\n'{cidade}' não é uma cidade válida. Por favor, insira uma cidade válida.\n")
+            
+            # Adiciona a cidade à lista
+            cidades.append(cidade_normalizada)
+        
+        except ValueError as e:
+            # Imprime a mensagem de erro e continua o loop
+            print(e)
+    
+    return cidades
+
+def mediaVendaMunicipiosProduto(cidades, combustivel):
 
     # Cria uma série booleana para as cidades
-    cidades_selecionadas = df_limpo['Municipio'].isin(['BOTUCATU', 'BAURU', 'AVARE', 'SAO PAULO'])
+    cidades_selecionadas = df_limpo['Municipio'].isin(cidades)
     
     # Cria uma série booleana para o produto
-    produto_selecionado = df_limpo['Produto'] == 'GASOLINA'
+    produto_selecionado = df_limpo['Produto'] == combustivel
     
     # Combina as duas condições
     condicao = cidades_selecionadas & produto_selecionado
@@ -168,30 +246,30 @@ def mediaVendaMunicipiosProduto():
     df_cidade = df_limpo[condicao]
     
     # Calcula a média por valor de venda
-    df_mais_baratos = df_cidade.groupby(['Municipio', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
+    df_mais_baratos = df_cidade.groupby(['Municipio', 'Estado - Sigla', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
-    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
+    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)', 'Estado - Sigla': 'Estado'})
     
     # Imprime o resultado
-    print(f"\n Municípios em ordem crescente da Média do Valor de venda: \n\n {df_mais_baratos.head(5)}")
+    print(f"\n Municípios em ordem crescente da Média do Valor de venda para toda série histórica: \n\n {df_mais_baratos.head(5)}")
 
     
-def mediaVendaMunicipiosProdutoDataInteresse():
+def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_usuario_dt, data_final_usuario_dt):
     # Cria uma série booleana para as cidades
-    cidades_selecionadas = df_limpo['Municipio'].isin(['BOTUCATU', 'BAURU', 'AVARE', 'SAO PAULO'])
+    cidades_selecionadas = df_limpo['Municipio'].isin(cidades)
     
     # Cria uma série booleana para o produto
-    produto_selecionado = df_limpo['Produto'] == 'GASOLINA'
+    produto_selecionado = df_limpo['Produto'] == combustivel
     
     # Combina as duas condições
     condicao = cidades_selecionadas & produto_selecionado
     
     # Aplica a condição ao DataFrame
     df_cidade = df_limpo[condicao]
-    
+     
     # Filtra por data de interesse
-    df_cidade = df_cidade[(df_cidade['Data da Coleta'] >= pd.to_datetime('10/05/2004', dayfirst=True)) & 
-                          (df_cidade['Data da Coleta'] <= pd.to_datetime('29/06/2004', dayfirst=True))]
+    df_cidade = df_cidade[(df_cidade['Data da Coleta'] >= pd.to_datetime(data_inicial_usuario_dt, dayfirst=True)) & 
+                          (df_cidade['Data da Coleta'] <= pd.to_datetime(data_final_usuario_dt, dayfirst=True))]
     
     # Calcula a média por valor de venda
     df_mais_baratos = df_cidade.groupby(['Municipio', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
@@ -199,7 +277,7 @@ def mediaVendaMunicipiosProdutoDataInteresse():
     df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
     
     # Imprime o resultado
-    print(df_mais_baratos.head(5))
+    print(f"\n Municípios em ordem crescente da Média do Valor de venda, analisados para o periodo de {data_inicial_usuario_dt} a {data_final_usuario_dt}:\n {df_mais_baratos.head(5)}")
     print(df_mais_baratos.describe())
 
 def top5BaratosHistorico():
