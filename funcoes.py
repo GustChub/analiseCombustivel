@@ -2,6 +2,7 @@
 import os
 import unidecode
 import pandas as pd
+import xlsxwriter
 from datetime import datetime
 
 # define função para concatenar os dados semestrais e salvar um arquivo concatenado.
@@ -110,7 +111,7 @@ def tratamentoDados():
 
     infoDF()
     
-    print("""\nIniciando o tratamento dos dados:\n- Conversão da coluna "Valor de Venda para Float"\n- Conversão da coluna "Data da Coleta para Data"\n- Criação da coluna "Endereço"\n- Tratamento das celulas com valores nulos\n""")
+    print("""\nIniciando o tratamento dos dados:\n- Conversão da coluna "Valor de Venda para Float"\n- Conversão da coluna "Data da Coleta para Data"\n- Criação da coluna "Endereço"\n- Tratamento das celulas com valores nulos\nPor favor aguarde""")
 
     convertValorFloat()
 
@@ -142,6 +143,8 @@ def tratamentoDados():
     
 def infoPeriodo():
 
+    global data_inicial, data_final, data_inicial_formatada, data_final_formatada
+
     # Organiza o dataframe em ordem crescente de data e seleciona as celulas com data inicia e a final do dataframe.
     df_sorted_data = df_limpo.sort_values(by='Data da Coleta', ascending= True)
     data_inicial = df_sorted_data.iloc[0, 11]
@@ -156,7 +159,34 @@ def infoPeriodo():
     
     return data_inicial, data_final, data_inicial_formatada, data_final_formatada
 
-def coletar_periodo_usuario(data_inicial, data_final, data_inicial_formatada, data_final_formatada):
+# Definir a classe EstatisticaBasica que herda atributos da clase .describe do pandas
+class EstatisticaBasica:
+    def __init__(self, df):
+        self.df = df  # Armazena o DataFrame fornecido na instância da classe
+
+    def describe_pt(self):
+        # Gera as estatísticas descritivas utilizando o método describe do pandas
+        desc = self.df.describe()
+        
+        # Traduzir os índices das estatísticas descritivas para português
+        translation = {
+            'count': 'Contagem das linhas:',
+            'mean': 'Média da consulta:',
+            'std': 'Desvio Padrão dos valores das médias da consulta:',
+            'min': 'Mínimo da consulta:',
+            '25%': '25% dos valores da consulta estão abaixo de:',
+            '50%': '50% dos valores da consulta estão abaixo de:',
+            '75%': '75% dos valores da consulta estão abaixo de:',
+            'max': 'Máximo da consulta:'
+        }
+
+        # Formatando os valores para usar vírgula em vez de ponto decimal
+        formatted_desc = desc.apply(lambda x: f"{x:.6f}".replace('.', ','))
+        formatted_desc.rename(index=translation, inplace=True)
+
+        return formatted_desc  # Retorna o DataFrame com as estatísticas descritivas formatadas
+
+def coletarPeriodoUsuario():
 
     while True:
         try:
@@ -182,7 +212,7 @@ def coletar_periodo_usuario(data_inicial, data_final, data_inicial_formatada, da
             # Imprime a mensagem de erro e continua o loop
             print(f"Erro: {e}. Por favor, tente novamente.")
 
-def coletar_combustivel():
+def coletarCombustivel():
     combustiveis_validos = df_limpo['Produto'].unique().tolist()
     
     while True:
@@ -198,7 +228,7 @@ def coletar_combustivel():
             print(e)
 
 
-def coletar_cidades():
+def coletarCidades():
     # Obtém a lista de cidades possíveis a partir do DataFrame
     cidades_possiveis = df_limpo['Municipio'].unique().tolist()
     
@@ -231,6 +261,72 @@ def coletar_cidades():
     
     return cidades
 
+def coletarUmaCidade():
+
+    # Obtém a lista de cidades possíveis a partir do DataFrame
+    cidades_possiveis = df_limpo['Municipio'].unique().tolist()
+    
+    while True:
+        try:
+            # Solicita ao usuário que insira o nome de uma cidade, retira espaços da entrada e converte para maiúsculas.
+            cidade = input("\nDigite o nome da cidade: ").strip().upper()
+            
+            # Normaliza a entrada do usuário: remove acentos e substitui 'Ç' por 'C'
+            cidade_normalizada = unidecode.unidecode(cidade).replace('Ç', 'C')
+            
+            # Verifica se a cidade inserida está na lista de cidades possíveis
+            cidades_possiveis_normalizadas = [unidecode.unidecode(c).replace('ç', 'c').upper() for c in cidades_possiveis]
+            if cidade_normalizada not in cidades_possiveis_normalizadas:
+                raise ValueError(f"\n'{cidade}' não é uma cidade válida. Por favor, insira uma cidade válida.\n")
+            
+            # Se a cidade for válida, retorna a cidade normalizada
+            return cidade_normalizada
+        
+        except ValueError as e:
+            # Imprime a mensagem de erro e continua o loop
+            print(e)
+
+def exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado):
+
+    try:
+        # Pergunta se o usuário deseja salvar a consulta
+        deseja_salvar_consulta = input("\nDeseja exportar a consulta? S/N: ").strip().upper()
+        
+        if deseja_salvar_consulta == "S":
+
+            # Criar o diretório dados/consulta se não existir
+            caminho_pasta = os.path.dirname(__file__) + '\dados\consulta'
+
+            if not os.path.exists(caminho_pasta):
+                os.makedirs(caminho_pasta)
+            
+            # Nome do arquivo com a data e hora atual
+            nome_arquivo = datetime.now().strftime('%Y%m%d_%H%M%S') + '.xlsx'
+            caminho_arquivo = os.path.join(caminho_pasta, nome_arquivo)
+            
+            # Criar um escritor de Excel usando pandas ExcelWriter
+            with pd.ExcelWriter(caminho_arquivo, engine='xlsxwriter') as writer:
+                # Adicionar abas
+                df_mais_baratos.to_excel(writer, sheet_name='Consulta combustível', index=False, startrow=2)
+                estatisticas_basicas.describe_pt().to_excel(writer, sheet_name='Estatísticas descritivas', startrow=2)
+                
+                # Escrever a informação sobre o que a consulta se refere na primeira linha de cada aba
+                worksheet1 = writer.sheets['Consulta combustível']
+                worksheet1.write(0, 0, titulo_resultado)
+                
+                worksheet2 = writer.sheets['Estatísticas descritivas']
+                worksheet2.write(0, 0, "Estatística descritiva da consulta")
+            
+            print(f'Dados exportados com sucesso para: {caminho_arquivo}')
+
+        elif deseja_salvar_consulta == "N":
+            print("Consulta não exportada.")
+        else:
+            print("Opção inválida. Consulta não exportada.")
+    
+    except Exception as e:
+        print(f"Ocorreu um erro ao exportar os dados para Excel: {str(e)}")
+
 def mediaVendaMunicipiosProduto(cidades, combustivel):
 
     # Cria uma série booleana para as cidades
@@ -249,9 +345,24 @@ def mediaVendaMunicipiosProduto(cidades, combustivel):
     df_mais_baratos = df_cidade.groupby(['Municipio', 'Estado - Sigla', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
     df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)', 'Estado - Sigla': 'Estado'})
+
+    # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+
+    # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
-    print(f"\n Municípios em ordem crescente da Média do Valor de venda para toda série histórica: \n\n {df_mais_baratos.head(5)}")
+    print(f"Municípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n {df_mais_baratos.head(5)}")
+
+    # imprime as estatísticas descritivas do resultado
+    print(f"Estatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+
+    # Cria o titulo do arquivo de resultados para ser salvo
+    titulo_resultado = f"Municípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}"
+
+    # Pergunta se o usuário deseja salvar a consulta
+    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
 
     
 def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_usuario_dt, data_final_usuario_dt):
@@ -272,20 +383,34 @@ def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_
                           (df_cidade['Data da Coleta'] <= pd.to_datetime(data_final_usuario_dt, dayfirst=True))]
     
     # Calcula a média por valor de venda
-    df_mais_baratos = df_cidade.groupby(['Municipio', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
+    df_mais_baratos = df_cidade.groupby(['Municipio', 'Estado - Sigla', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
-    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
+    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)', 'Estado - Sigla': 'Estado'})
+
+    # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+
+    # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
-    print(f"\n Municípios em ordem crescente da Média do Valor de venda, analisados para o periodo de {data_inicial_usuario_dt} a {data_final_usuario_dt}:\n {df_mais_baratos.head(5)}")
-    print(df_mais_baratos.describe())
+    print(f"\n Municípios em ordem crescente da Média do Valor de venda, analisados para o período de {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n\n {df_mais_baratos.head(5)}\n")
+    
+    # imprime as estatísticas descritivas do resultado
+    print(f"\nEstatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
 
-def top5BaratosHistorico():
+    # Cria o titulo do arquivo de resultados para ser salvo
+    titulo_resultado = f"Municípios em ordem crescente da Média do Valor de venda, analisados para o período de {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}"
+
+    # Pergunta se o usuário deseja salvar a consulta
+    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
+
+def top5BaratosHistorico(cidade, combustivel):
     # Cria uma série booleana para a cidade
-    cidade_selecionada = df_limpo['Municipio'] == 'BOTUCATU'
+    cidade_selecionada = df_limpo['Municipio'] == cidade
     
     # Cria uma série booleana para o produto
-    produto_selecionado = df_limpo['Produto'] == 'GASOLINA'
+    produto_selecionado = df_limpo['Produto'] == combustivel
     
     # Combina as duas condições
     condicao = cidade_selecionada & produto_selecionado
@@ -294,21 +419,36 @@ def top5BaratosHistorico():
     df_cidade = df_limpo[condicao]
     
     # Calcula a média por valor de venda
-    df_mais_baratos = df_cidade.groupby(['Municipio', 'Produto', 'Revenda', 'Bandeira', 'Endereço'])['Valor de Venda'].mean().sort_values(ascending=True)
+    df_mais_baratos = df_cidade.groupby(['Produto', 'Revenda', 'Bandeira', 'Endereço'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
     df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
+
+    # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+
+    # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
-    print(df_mais_baratos.head(5))
-    print(df_mais_baratos.describe())
+    print(f"\nPostos em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n{df_mais_baratos.head(5)}\n")
+    
+    # imprime as estatísticas descritivas do resultado
+    print(f"\nEstatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+
+    # Cria o titulo do arquivo de resultados para ser salvo
+    titulo_resultado = f"Postos em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}"
+
+    # Pergunta se o usuário deseja salvar a consulta
+    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
+    
 
    
-def top5BaratosDataInteresse():
+def top5BaratosDataInteresse(cidade, combustivel, data_inicial_usuario_dt, data_final_usuario_dt):
     # Cria uma série booleana para a cidade
-    cidade_selecionada = df_limpo['Municipio'] == 'BOTUCATU'
+    cidade_selecionada = df_limpo['Municipio'] == cidade
     
     # Cria uma série booleana para o produto
-    produto_selecionado = df_limpo['Produto'] == 'GASOLINA'
+    produto_selecionado = df_limpo['Produto'] == combustivel
     
     # Combina as duas condições
     condicao = cidade_selecionada & produto_selecionado
@@ -317,14 +457,29 @@ def top5BaratosDataInteresse():
     df_cidade = df_limpo[condicao]
     
     # Filtra por data de interesse
-    df_cidade = df_cidade[(df_cidade['Data da Coleta'] >= pd.to_datetime('10/05/2004', dayfirst=True)) & 
-                          (df_cidade['Data da Coleta'] <= pd.to_datetime('29/06/2004', dayfirst=True))]
+    df_cidade = df_cidade[(df_cidade['Data da Coleta'] >= pd.to_datetime(data_inicial_usuario_dt, dayfirst=True)) & 
+                          (df_cidade['Data da Coleta'] <= pd.to_datetime(data_final_usuario_dt, dayfirst=True))]
     
     # Calcula a média por valor de venda
-    df_mais_baratos = df_cidade.groupby(['Municipio', 'Produto', 'Revenda', 'Bandeira', 'Endereço'])['Valor de Venda'].mean().sort_values(ascending=True)
+    df_mais_baratos = df_cidade.groupby(['Produto', 'Revenda', 'Bandeira', 'Endereço'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
     df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
     
+    # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+
+    # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+
     # Imprime o resultado
-    print(df_mais_baratos.head(5))
-    print(df_mais_baratos.describe())
+    print(f"\nPostos com o preço médio do combustivel mais baratos para o período {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n{df_mais_baratos.head(5)}\n")
+    
+    # imprime as estatísticas descritivas do resultado
+    print(f"\nEstatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+
+    # Cria o titulo do arquivo de resultados para ser salvo
+    titulo_resultado = f"Postos com o preço médio do combustivel mais baratos para o período {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}"
+
+    # Pergunta se o usuário deseja salvar a consulta
+    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
+    

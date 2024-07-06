@@ -2,10 +2,10 @@ import os
 import pandas as pd
 import funcoes as fn
 
-# Retira o limite de carcateres vizualizados no teriminal quando é imprimido o dataframe. 
+# Retira o limite de caracteres vizualizados no teriminal, quando é imprimido o dataframe. 
 pd.set_option('display.max_colwidth', None)
 
-# Roda a função de concatenar os dados semestrais, cria o datframe como as informações e salva um CSV concatenado.
+# Roda a função de concatenar os dados semestrais, cria o dataframe e salva um CSV concatenado.
 fn.concatenaDados()
 
 # Roda a função de tratamento dos dados.
@@ -17,34 +17,56 @@ fn.infoPeriodo()
 while True:
 
     # Solicita a Analise de dados desjada:
-    escolha = input(f"""\nEscolha a Analise de dados desejada:\n 1 - Comparação entre cidades do preço médio do combustivel para toda série histórica\n 2 - Comparação entre cidades do preço médio do combustivel para o periodo de interesse\n 3 - Endereço dos Postos com o preço médio do combustivel mais baratos para toda série histórica\n 4 - Endereço dos Postos com o preço médio do combustivel mais baratos para o perido de interesse\n 5 - Sair\n""")
+    print("""\nEscolha a Analise de dados desejada:\n 1 - Comparação entre cidades do preço médio do combustivel para toda série a histórica\n 2 - Comparação entre cidades do preço médio do combustivel para o período de interesse\n 3 - Postos com o preço médio do combustivel mais baratos para toda série a histórica\n 4 - Postos com o preço médio do combustivel mais baratos para o perído de interesse\n 5 - Sair\n""")
+    escolha = input("Opção: ")
 
     match escolha:
         case "1":
-            combustivel = fn.coletar_combustivel()
-            
-            cidades = fn.coletar_cidades()
 
+            # Atribui a combustivel a escolha do usuário retornada pela função 'fn.coletarCombustivel()'
+            combustivel = fn.coletarCombustivel()
+            
+            # Atribui a cidades a escolha do municipio de interesse do usuário retornada pela função 'fn.coletarCidades()'
+            cidades = fn.coletarCidades()
+
+            # Imprimi os resultado das Médias do valor do combustível para o municipio em toda série histórica
             fn.mediaVendaMunicipiosProduto(cidades, combustivel)
 
         case "2":
 
-            # Desempacota as variaveis que informam inicio da série histórica e final da série histórica.
-            data_inicial, data_final, data_inicial_formatada, data_final_formatada = fn.infoPeriodo()
-
             # Desempacota as variaveis que informam inicio do periodo de interesse e final do periodo de interesse.
-            data_inicial_usuario_dt, data_final_usuario_dt = fn.coletar_periodo_usuario(data_inicial, data_final, data_inicial_formatada, data_final_formatada)
+            data_inicial_usuario_dt, data_final_usuario_dt = fn.coletarPeriodoUsuario()
 
-            combustivel = fn.coletar_combustivel()
-            
-            cidades = fn.coletar_cidades()
+            # Atribui a combustivel a escolha do usuário retornada pela função 'fn.coletarCombustivel()'
+            combustivel = fn.coletarCombustivel()
 
+            # Atribui a cidades a escolha do municipio de interesse do usuário retornada pela função 'fn.coletarCidades()'
+            cidades = fn.coletarCidades()
+
+            # Imprimi os resultado das Médias do valor do combustível para o municipio em toda série histórica
             fn.mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_usuario_dt, data_final_usuario_dt)
 
         case "3":
-            fn.top5BaratosHistorico()
 
-            fn.top5BaratosDataInteresse()
+            combustivel = fn.coletarCombustivel()
+
+            cidade = fn.coletarUmaCidade()
+
+            fn.top5BaratosHistorico(cidade, combustivel)
+
+        case "4":
+
+            # Desempacota as variaveis que informam inicio do periodo de interesse e final do periodo de interesse.
+            data_inicial_usuario_dt, data_final_usuario_dt = fn.coletarPeriodoUsuario()
+
+            combustivel = fn.coletarCombustivel()
+            
+            cidade = fn.coletarUmaCidade()
+
+            fn.top5BaratosDataInteresse(cidade, combustivel, data_inicial_usuario_dt, data_final_usuario_dt)
         
         case "5":
             break
+
+        case _ :
+            print('Entrada inválida, ecolha um número de 1 a 5')
