@@ -1,8 +1,13 @@
 # logs
 *.log
 
-# Ignorar pastas de dados
-/dados/*
+# Ignorar arquivos das pastas de dados
+/dados/consulta/*
+/dados/csv_concatenado/*
+/dados/csv_semestrais/*
+
+# Exceto o diretorio do csv_semestrais
+!/dados/csv_semestrais/
 
 # Ignorar arquivos de cache do Python
 __pycache__/
