@@ -2,7 +2,7 @@
 *.log
 
 # Ignorar pastas de dados
-/dados/
+/dados/*
 
 # Ignorar arquivos de cache do Python
 __pycache__/
