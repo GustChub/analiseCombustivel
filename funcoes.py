@@ -8,6 +8,7 @@ from datetime import datetime
 # define função para concatenar os dados semestrais e salvar um arquivo concatenado.
 def concatenaDados():
     
+    # Define as variaveis globais
     global arquivo_saida
     global diretorio_salvar
     global df
@@ -20,11 +21,12 @@ def concatenaDados():
     if not os.path.exists(diretorio_salvar):
         os.makedirs(diretorio_salvar)
     
-    # Verifica se o arquivo de saída já existe, se existir lê o arquivo e  o salva na memoria como dataframe "df"
+    # Verifica se o arquivo de saída já existe, se existir lê o arquivo e o salva na memoria como dataframe "df"
     if os.path.exists(arquivo_saida):
         print(f"O arquivo {arquivo_saida} já existe. Carregando o DataFrame a partir deste arquivo.")
         df = pd.read_csv(arquivo_saida, delimiter=',', low_memory= False)
         print(f"DataFrame carregado com sucesso. Total de linhas: {len(df)}")
+
         return df
            
    # Lista os arquivos dentro da pasta de origem dos CSVs
@@ -44,7 +46,7 @@ def concatenaDados():
            print("Arquivo analisado", arquivo)
            caminho = os.path.join(pasta_csv_semestrais, arquivo)
            print("Caminho do arquivo: ", caminho)
-           df = pd.read_csv(caminho, delimiter=';',low_memory= False)
+           df = pd.read_csv(caminho, delimiter=';', low_memory= False, encoding_errors="ignore" )
            print("Total de linhas do arquivo", len(df))
            df_base.append(df)
 
@@ -58,6 +60,7 @@ def concatenaDados():
     print(f"DataFrame salvo como CSV em: {arquivo_saida}")
 
     return df
+
 # Define função para atualizar o banco de dados caso seja inserido algum dado semestral novo.
 def atualizaDados():
 
@@ -75,6 +78,7 @@ def infoDF():
     print("\nInformações do DataFrame antes do tratamento:\n")
     print(df.info())
 
+# Define a função que retona informações sobre o dataframe "df_limpo"
 def infoDFLimpo(df_limpo):
 
     # Exibe informações sobre o DataFrame antes do tratamento
@@ -109,14 +113,19 @@ def tratamentoDados():
 
     global df_limpo
 
+    # Imprime informação dos tipos de dadados de cada coluna do daframe, antes do tratamento.
     infoDF()
     
+    # Informa quais os tratamento de dados serão aplicados.
     print("""\nIniciando o tratamento dos dados:\n- Conversão da coluna "Valor de Venda para Float"\n- Conversão da coluna "Data da Coleta para Data"\n- Criação da coluna "Endereço"\n- Tratamento das celulas com valores nulos\nPor favor aguarde""")
 
+    # Chama o método que realiza a conversão da coluna "Valor de Venda" para float.
     convertValorFloat()
 
+    # Chama o método que converte a coluna "Data da Coleta" para valores de data.
     convertDate()
 
+    # chama o método que cria a coluna "endereço" concatenando 
     concatenaEndereco()
     
     # Realiza o levantamento de valores nulos por coluna antes da limpeza
@@ -162,6 +171,7 @@ def infoPeriodo():
 # Definir a classe EstatisticaBasica que herda atributos da clase .describe do pandas
 class EstatisticaBasica:
     def __init__(self, df):
+
         self.df = df  # Armazena o DataFrame fornecido na instância da classe
 
     def describe_pt(self):
@@ -213,22 +223,29 @@ def coletarPeriodoUsuario():
             print(f"Erro: {e}. Por favor, tente novamente.")
 
 def coletarCombustivel():
+
+    # Cria uma serie com so valores únicos da coluna combustível
     combustiveis_validos = df_limpo['Produto'].unique().tolist()
     
     while True:
+
         try:
+            # Solicita ao usuário o combustível de interesse
             combustivel = input(f"Escreva um combustível desejado - {combustiveis_validos}: ").strip().upper()
             
+            # Verifica se o combustível escolhido existe na serie de combustíveis validos
             if combustivel not in combustiveis_validos:
                 raise ValueError("Combustível inválido. Por favor, insira um combustível válido.")
             
             return combustivel
         
         except ValueError as e:
+            # Imprime a mensagem de erro e continua o loop
             print(e)
 
 
 def coletarCidades():
+    
     # Obtém a lista de cidades possíveis a partir do DataFrame
     cidades_possiveis = df_limpo['Municipio'].unique().tolist()
     
@@ -286,7 +303,7 @@ def coletarUmaCidade():
             # Imprime a mensagem de erro e continua o loop
             print(e)
 
-def exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado):
+def exportarParaExcel(df_mais_baratos, estatisticas_basicas, titulo_resultado):
 
     try:
         # Pergunta se o usuário deseja salvar a consulta
@@ -319,12 +336,16 @@ def exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
             
             print(f'Dados exportados com sucesso para: {caminho_arquivo}')
 
+        # Informa que o arquivo não foi exportado e finaliza o loop.
         elif deseja_salvar_consulta == "N":
             print("Consulta não exportada.")
+
+        # Informa que o arquivo não foi exportado e finaliza o loop.
         else:
             print("Opção inválida. Consulta não exportada.")
     
     except Exception as e:
+        # Imprime a mensagem de erro e continua o loop
         print(f"Ocorreu um erro ao exportar os dados para Excel: {str(e)}")
 
 def mediaVendaMunicipiosProduto(cidades, combustivel):
@@ -353,16 +374,16 @@ def mediaVendaMunicipiosProduto(cidades, combustivel):
     df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
-    print(f"Municípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n {df_mais_baratos.head(5)}")
+    print(f"\nMunicípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n {df_mais_baratos.head(5)}")
 
     # imprime as estatísticas descritivas do resultado
-    print(f"Estatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+    print(f"\nEstatistíca descritiva da consulta:\n\n{estatisticas_basicas.describe_pt()}")
 
     # Cria o titulo do arquivo de resultados para ser salvo
     titulo_resultado = f"Municípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}"
 
     # Pergunta se o usuário deseja salvar a consulta
-    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
+    exportarParaExcel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
 
     
 def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_usuario_dt, data_final_usuario_dt):
@@ -397,13 +418,13 @@ def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_
     print(f"\n Municípios em ordem crescente da Média do Valor de venda, analisados para o período de {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n\n {df_mais_baratos.head(5)}\n")
     
     # imprime as estatísticas descritivas do resultado
-    print(f"\nEstatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+    print(f"\nEstatistíca descritiva da consulta:\n\n{estatisticas_basicas.describe_pt()}")
 
     # Cria o titulo do arquivo de resultados para ser salvo
     titulo_resultado = f"Municípios em ordem crescente da Média do Valor de venda, analisados para o período de {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}"
 
     # Pergunta se o usuário deseja salvar a consulta
-    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
+    exportarParaExcel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
 
 def top5BaratosHistorico(cidade, combustivel):
     # Cria uma série booleana para a cidade
@@ -433,15 +454,13 @@ def top5BaratosHistorico(cidade, combustivel):
     print(f"\nPostos em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n{df_mais_baratos.head(5)}\n")
     
     # imprime as estatísticas descritivas do resultado
-    print(f"\nEstatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+    print(f"\nEstatistíca descritiva da consulta:\n\n{estatisticas_basicas.describe_pt()}")
 
     # Cria o titulo do arquivo de resultados para ser salvo
-    titulo_resultado = f"Postos em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}"
+    titulo_resultado = f"Postos com o preço médio do combustivel mais baratos para a cidade de interesse em toda a série histórica {data_inicial_formatada} a {data_final_formatada}"
 
     # Pergunta se o usuário deseja salvar a consulta
-    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
-    
-
+    exportarParaExcel(df_mais_baratos, estatisticas_basicas, titulo_resultado) 
    
 def top5BaratosDataInteresse(cidade, combustivel, data_inicial_usuario_dt, data_final_usuario_dt):
     # Cria uma série booleana para a cidade
@@ -475,11 +494,11 @@ def top5BaratosDataInteresse(cidade, combustivel, data_inicial_usuario_dt, data_
     print(f"\nPostos com o preço médio do combustivel mais baratos para o período {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n{df_mais_baratos.head(5)}\n")
     
     # imprime as estatísticas descritivas do resultado
-    print(f"\nEstatistíca descritiva da consulta:\n{estatisticas_basicas.describe_pt()}")
+    print(f"\nEstatistíca descritiva da consulta:\n\n{estatisticas_basicas.describe_pt()}")
 
     # Cria o titulo do arquivo de resultados para ser salvo
-    titulo_resultado = f"Postos com o preço médio do combustivel mais baratos para o período {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}"
+    titulo_resultado = f"Postos com o preço médio do combustivel mais baratos para a cidade e período de interesse {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}"
 
     # Pergunta se o usuário deseja salvar a consulta
-    exportar_para_excel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
+    exportarParaExcel(df_mais_baratos, estatisticas_basicas, titulo_resultado)
     
