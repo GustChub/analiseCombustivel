@@ -1,0 +1,8 @@
+# logs
+*.log
+
+# Ignorar pastas de dados
+/dados/
+
+# Ignorar arquivos de cache do Python
+__pycache__/
