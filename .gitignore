@@ -2,12 +2,10 @@
 *.log
 
 # Ignorar arquivos das pastas de dados
-/dados/consulta/*
-/dados/csv_concatenado/*
-/dados/csv_semestrais/*
-
-# Exceto o diretorio do csv_semestrais
-!/dados/csv_semestrais/
+/dados/consulta
+/dados/csv_concatenado
+/dados/csv_semestrais
+!/dados/csv_semestrais/empty.py
 
 # Ignorar arquivos de cache do Python
 __pycache__/

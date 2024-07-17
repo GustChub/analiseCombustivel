@@ -3,6 +3,7 @@ import os
 import unidecode
 import pandas as pd
 import xlsxwriter
+import gc
 from datetime import datetime
 
 # define função para concatenar os dados semestrais e salvar um arquivo concatenado.
@@ -35,29 +36,59 @@ def concatenaDados():
     arquivos = os.listdir(pasta_csv_semestrais)
     print("Arquivos na pasta: ", arquivos)
 
-    # Cria um DataFrame para armazenar os dados
+    # Lista para armazenar os DataFrames carregados
     df_base = []
-    
-    # Varre todos os arquivos .csv e adiciona ao df_base.
-    csv_processado = 0
-    for arquivo in arquivos:
-        if arquivo.endswith(".csv"):
-           csv_processado += 1
-           print("Arquivo analisado", arquivo)
-           caminho = os.path.join(pasta_csv_semestrais, arquivo)
-           print("Caminho do arquivo: ", caminho)
-           df = pd.read_csv(caminho, delimiter=';', low_memory= False, encoding_errors="ignore" )
-           print("Total de linhas do arquivo", len(df))
-           df_base.append(df)
 
-    # Concatena todos os DataFrames e um único.
+    # Itera sobre os arquivos na pasta
+    for arquivo in os.listdir(pasta_csv_semestrais):
+        if arquivo.endswith(".csv"):
+            print("Arquivo analisado:", arquivo)
+            caminho = os.path.join(pasta_csv_semestrais, arquivo)
+            print("Caminho do arquivo:", caminho)
+            
+            # Define as colunas que você deseja carregar
+            colunas_carregar = [
+                'Regiao - Sigla', 'Estado - Sigla', 'Municipio', 'Revenda', 'CNPJ da Revenda',
+                'Nome da Rua', 'Numero Rua', 'Bairro', 'Produto', 'Data da Coleta', 
+                'Valor de Venda', 'Bandeira'
+            ]
+            
+            # Carrega o arquivo CSV em chunks, apenas com as colunas especificadas
+            df_chunk = pd.read_csv(caminho, delimiter=';', usecols=colunas_carregar, 
+                                low_memory=False, encoding_errors="ignore", chunksize=100000, 
+                                dtype=str)  # Carregar tudo como string
+            
+            for chunk in df_chunk:
+                # Corrige os valores da coluna 'Valor de Compra'
+                chunk['Valor de Venda'] = chunk['Valor de Venda'].str.replace(',', '.').astype(float)
+                
+                # Cria a nova coluna "Endereço" concatenando as colunas especificadas
+                chunk['Endereço'] = chunk['Nome da Rua'] + ', ' + chunk['Numero Rua'] + ', ' + chunk['Bairro'] + ', ' + chunk['Municipio'] + ', ' + chunk['Estado - Sigla']
+                
+                # Remove as colunas que não são mais necessárias
+                chunk = chunk.drop(columns=['Nome da Rua', 'Numero Rua', 'Bairro'])
+                
+                # Adiciona o chunk ao DataFrame base
+                df_base.append(chunk)
+
+    
+    # Concatena todos os chunks em um único DataFrame
     df = pd.concat(df_base, ignore_index=True)
-    print("Base de dados criada, total de:", str(csv_processado), "Arquivos adicionados.")
-    print(f"Total de linhas do DataFrame, {len(df)}, \n\n{df.describe()}, \n\n{df.info()} ")
+
+    # Libera a memória dos DataFrames intermediários
+    del df_chunk
+    del df_base
+
+    # Método chamado para realizar a limpeza da memoria ram, limpando resquicios que as variaveis deletadas possam ter deixado.
+    gc.collect()
+
+    #df = pd.concat(df_base, ignore_index=True)
+    print("\nBase de dados criada")
+    print(f"Total de linhas do DataFrame: {len(df)} \nSalvando arquivo concatenado, aguarde") #\n\n{df.describe()}, \n\n{df.info()} ")
 
     # Salva o DataFrame em um arquivo CSV na pasta especificada
     df.to_csv(arquivo_saida, index=False)
-    print(f"DataFrame salvo como CSV em: {arquivo_saida}")
+    print(f"\nDataFrame salvo como CSV em: {arquivo_saida}")
 
     return df
 
@@ -85,28 +116,11 @@ def infoDFLimpo(df_limpo):
     print("\nInformações do DataFrame depois do tratamento:\n")
     print(df_limpo.info())
     
-def convertValorFloat(): 
-
-    # Converte a coluna 'Valor de Venda' para float
-    df['Valor de Venda'] = df['Valor de Venda'].str.replace(',', '.').astype(float)
-
-    return df
-
 def convertDate():
 
     # Converte a coluna 'Data da Coleta' para o formato de Data 
     df['Data da Coleta'] = pd.to_datetime(df['Data da Coleta'], dayfirst=True, errors='coerce')
 
-    return df
-
-def concatenaEndereco():
-
-    # Converte as colunas de interesse para strings
-    df[['Nome da Rua', 'Numero Rua', 'Bairro', 'Municipio', 'Estado - Sigla']] = df[['Nome da Rua', 'Numero Rua', 'Bairro', 'Municipio', 'Estado - Sigla']].astype(str)
-    
-    # Concatenar colunas para formar o endereço completo
-    df['Endereço'] = df[['Nome da Rua', 'Numero Rua', 'Bairro', 'Municipio', 'Estado - Sigla']].agg(', '.join, axis=1)
-    
     return df
 
 def tratamentoDados():
@@ -117,17 +131,11 @@ def tratamentoDados():
     infoDF()
     
     # Informa quais os tratamento de dados serão aplicados.
-    print("""\nIniciando o tratamento dos dados:\n- Conversão da coluna "Valor de Venda para Float"\n- Conversão da coluna "Data da Coleta para Data"\n- Criação da coluna "Endereço"\n- Tratamento das celulas com valores nulos\nPor favor aguarde""")
-
-    # Chama o método que realiza a conversão da coluna "Valor de Venda" para float.
-    convertValorFloat()
-
+    print("\nIniciando o tratamento dos dados, aguarde.")
+    
     # Chama o método que converte a coluna "Data da Coleta" para valores de data.
     convertDate()
-
-    # chama o método que cria a coluna "endereço" concatenando 
-    concatenaEndereco()
-    
+        
     # Realiza o levantamento de valores nulos por coluna antes da limpeza
     colunas_interesse = ['Produto', 'Valor de Venda','Data da Coleta']
     valores_nulos_antes = df[colunas_interesse].isnull().sum().reset_index()
@@ -137,7 +145,7 @@ def tratamentoDados():
 
     # Remove as linhas com valores nulos nas colunas de interesse
     df_limpo = df.dropna(subset=colunas_interesse)
-
+    
     # Realiza o levantamento de valores nulos por coluna após a limpeza
     valores_nulos_depois = df_limpo[colunas_interesse].isnull().sum().reset_index()
     valores_nulos_depois.columns = ['Coluna', 'Valores Nulos']
@@ -156,15 +164,15 @@ def infoPeriodo():
 
     # Organiza o dataframe em ordem crescente de data e seleciona as celulas com data inicia e a final do dataframe.
     df_sorted_data = df_limpo.sort_values(by='Data da Coleta', ascending= True)
-    data_inicial = df_sorted_data.iloc[0, 11]
-    data_final = df_sorted_data.iloc[-1, 11]
+    data_inicial = df_sorted_data.iloc[0, 6] 
+    data_final = df_sorted_data.iloc[-1, 6] 
     
     # Formatando as datas no formato (dia/mês/ano)
     data_inicial_formatada = data_inicial.strftime('%d/%m/%Y')
     data_final_formatada = data_final.strftime('%d/%m/%Y')
 
     # Infomora a data inicial e a final do dataframe
-    print(f'\nA série historica começa em {data_inicial_formatada} e termina em {data_final_formatada}\n')
+    print(f'\nA série historica começa em {data_inicial_formatada} e termina em {data_final_formatada}')
     
     return data_inicial, data_final, data_inicial_formatada, data_final_formatada
 
@@ -365,13 +373,13 @@ def mediaVendaMunicipiosProduto(cidades, combustivel):
     # Calcula a média por valor de venda
     df_mais_baratos = df_cidade.groupby(['Municipio', 'Estado - Sigla', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
-    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)', 'Estado - Sigla': 'Estado'})
+    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$/l)', 'Estado - Sigla': 'Estado'})
 
     # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
     estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
     print(f"\nMunicípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n {df_mais_baratos.head(5)}")
@@ -406,13 +414,13 @@ def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_
     # Calcula a média por valor de venda
     df_mais_baratos = df_cidade.groupby(['Municipio', 'Estado - Sigla', 'Produto'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
-    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)', 'Estado - Sigla': 'Estado'})
+    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$/l)', 'Estado - Sigla': 'Estado'})
 
     # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
-    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
     print(f"\n Municípios em ordem crescente da Média do Valor de venda, analisados para o período de {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n\n {df_mais_baratos.head(5)}\n")
@@ -442,13 +450,13 @@ def top5BaratosHistorico(cidade, combustivel):
     # Calcula a média por valor de venda
     df_mais_baratos = df_cidade.groupby(['Produto', 'Revenda', 'Bandeira', 'Endereço'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
-    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
+    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$/l)'})
 
     # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
-    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
     print(f"\nPostos em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n{df_mais_baratos.head(5)}\n")
@@ -482,13 +490,13 @@ def top5BaratosDataInteresse(cidade, combustivel, data_inicial_usuario_dt, data_
     # Calcula a média por valor de venda
     df_mais_baratos = df_cidade.groupby(['Produto', 'Revenda', 'Bandeira', 'Endereço'])['Valor de Venda'].mean().sort_values(ascending=True)
     df_mais_baratos = df_mais_baratos.reset_index()
-    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$)'})
+    df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$/l)'})
     
     # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
-    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
 
     # Imprime o resultado
     print(f"\nPostos com o preço médio do combustivel mais baratos para o período {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n{df_mais_baratos.head(5)}\n")

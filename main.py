@@ -81,4 +81,4 @@ while True:
         
         # Trata as entradas não previstas
         case _ :
-            print('Entrada inválida, ecolha um número de 1 a 5')
+            print('Entrada inválida, escolha um número de 1 a 5')
