@@ -241,6 +241,10 @@ def coletarCombustivel():
             # Solicita ao usuário o combustível de interesse
             combustivel = input(f"Escreva um combustível desejado - {combustiveis_validos}: ").strip().upper()
             
+            # Previne que o usuário deixe o campo vazio.
+            if len(combustivel) == 0:
+                raise ValueError("\nPor favor insira um Combustível.\n")
+            
             # Verifica se o combustível escolhido existe na serie de combustíveis validos
             if combustivel not in combustiveis_validos:
                 raise ValueError("Combustível inválido. Por favor, insira um combustível válido.")
@@ -295,7 +299,7 @@ def coletarUmaCidade():
         try:
             # Solicita ao usuário que insira o nome de uma cidade, retira espaços da entrada e converte para maiúsculas.
             cidade = input("\nDigite o nome da cidade: ").strip().upper()
-            
+
             # Normaliza a entrada do usuário: remove acentos e substitui 'Ç' por 'C'
             cidade_normalizada = unidecode.unidecode(cidade).replace('Ç', 'C')
             
@@ -376,10 +380,10 @@ def mediaVendaMunicipiosProduto(cidades, combustivel):
     df_mais_baratos = df_mais_baratos.rename(columns={'Valor de Venda': 'Média do Valor de Venda (R$/l)', 'Estado - Sigla': 'Estado'})
 
     # Cria uma instância da classe EstatisticaBasica imprime as estatísticas descritivas em português
-    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$)'])
+    estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$/l)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
     print(f"\nMunicípios em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n {df_mais_baratos.head(5)}")
@@ -420,7 +424,7 @@ def mediaVendaMunicipiosProdutoDataInteresse(cidades, combustivel, data_inicial_
     estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$/l)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
     print(f"\n Municípios em ordem crescente da Média do Valor de venda, analisados para o período de {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n\n {df_mais_baratos.head(5)}\n")
@@ -456,7 +460,7 @@ def top5BaratosHistorico(cidade, combustivel):
     estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$/l)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
     
     # Imprime o resultado
     print(f"\nPostos em ordem crescente da Média do Valor de venda para toda a série histórica de {data_inicial_formatada} a {data_final_formatada}:\n\n{df_mais_baratos.head(5)}\n")
@@ -496,7 +500,7 @@ def top5BaratosDataInteresse(cidade, combustivel, data_inicial_usuario_dt, data_
     estatisticas_basicas = EstatisticaBasica(df_mais_baratos['Média do Valor de Venda (R$/l)'])
 
     # Formata os valores para usar vírgula em vez de ponto decimal em df_mais_baratos
-    df_mais_baratos['Média do Valor de Venda (R$)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
+    df_mais_baratos['Média do Valor de Venda (R$/l)'] = df_mais_baratos['Média do Valor de Venda (R$/l)'].apply(lambda x: f"{x:.6f}".replace('.', ','))
 
     # Imprime o resultado
     print(f"\nPostos com o preço médio do combustivel mais baratos para o período {data_inicial_usuario_dt.strftime('%d/%m/%Y')} a {data_final_usuario_dt.strftime('%d/%m/%Y')}:\n{df_mais_baratos.head(5)}\n")
