@@ -33,6 +33,12 @@ def concatenaDados():
    # Lista os arquivos dentro da pasta de origem dos CSVs
     diretorio_principal = os.path.dirname(__file__)
     pasta_csv_semestrais = os.path.join(diretorio_principal, 'dados', 'csv_semestrais')
+
+    if not os.path.exists(pasta_csv_semestrais): #Verifica/Cria a pasta csv_semestrais
+        os.makedirs(pasta_csv_semestrais)
+        print(f"Salve os arquivos semestrais.csv na pasta {pasta_csv_semestrais} e reinicie o Script")
+        exit()
+
     arquivos = os.listdir(pasta_csv_semestrais)
     print("Arquivos na pasta: ", arquivos)
 
